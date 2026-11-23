@@ -1,13 +1,14 @@
 /* Town outposts and inhabitants. Optional CC0 kit input; no loaders or network. */
 (function (root) {
   'use strict';
+  // Island Postie: titles renamed from the original site's business demos; ids kept.
   var SITE_PLAN = [
-    {id:'project-hall',region:'collaboration',title:'项目协作馆',npcName:'栗栗',category:'collaboration',at:[6,-21],annex:[2,-22],models:['houseA','tavern'],widths:[3.1,2.4]},
-    {id:'automation-post',region:'automation',title:'自动化邮局',npcName:'豆豆',category:'automation',at:[-30,5],annex:[-26,3],models:['houseB','blacksmith'],widths:[3.0,2.5]},
-    {id:'data-observatory',region:'connection',title:'数据观测台',npcName:'澄澄',category:'connection',at:[12,18],annex:[17,19],models:['watchtower','watermill'],widths:[2.4,2.7]},
-    {id:'service-station',region:'desert',title:'客户服务站',npcName:'阿杏',category:'automation',at:[-42,11],annex:[-46,14],models:['market','houseB'],widths:[3.1,2.5]},
-    {id:'knowledge-library',region:'snow',title:'知识图书馆',npcName:'绵绵',category:'collaboration',at:[-23,-27],annex:[-27,-32],models:['tavern','houseA'],widths:[3.0,2.5]},
-    {id:'integration-garage',region:'lava',title:'集成维修铺',npcName:'阿栓',category:'connection',at:[26,-14],annex:[31,-14],models:['blacksmith','lumbermill'],widths:[3.0,2.7]}
+    {id:'project-hall',region:'collaboration',title:'村公所',npcName:'栗栗',category:'collaboration',at:[6,-21],annex:[2,-22],models:['houseA','tavern'],widths:[3.1,2.4]},
+    {id:'automation-post',region:'automation',title:'小岛邮局',npcName:'豆豆',category:'automation',at:[-30,5],annex:[-26,3],models:['houseB','blacksmith'],widths:[3.0,2.5]},
+    {id:'data-observatory',region:'connection',title:'港口灯塔',npcName:'澄澄',category:'connection',at:[12,18],annex:[17,19],models:['watchtower','watermill'],widths:[2.4,2.7]},
+    {id:'service-station',region:'desert',title:'沙漠驿站',npcName:'阿杏',category:'automation',at:[-42,11],annex:[-46,14],models:['market','houseB'],widths:[3.1,2.5]},
+    {id:'knowledge-library',region:'snow',title:'雪山图书馆',npcName:'绵绵',category:'collaboration',at:[-23,-27],annex:[-27,-32],models:['tavern','houseA'],widths:[3.0,2.5]},
+    {id:'integration-garage',region:'lava',title:'熔岩维修铺',npcName:'阿栓',category:'connection',at:[26,-14],annex:[31,-14],models:['blacksmith','lumbermill'],widths:[3.0,2.7]}
   ];
   var ROUTES = [
     [[0,-14],[0,-9],[-7,-6],[-16,0],[-22,6],[-26,10],[-26,12]],

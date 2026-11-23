@@ -110,6 +110,8 @@
     var T=THREE,opts=options||{},nodes=opts.nodes||[],reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     T.ColorManagement.legacyMode=false;
     var scene=new T.Scene(),globe=new T.Group(),mapGroup=new T.Group();
+    // Island Postie: per-frame game hook on the island (see onMapFrame / getMapContext).
+    var gameHook=typeof opts.onMapFrame==='function'?opts.onMapFrame:null,gameAnimating=false;
     globe.name='surface';mapGroup.name='connected-map';mapGroup.visible=false;scene.add(globe,mapGroup);
     var renderer,rendererAttempts=[];
     function makeRenderer(compatible){return new T.WebGLRenderer({canvas:canvas,alpha:true,antialias:opts.highQuality===true&&!compatible,powerPreference:compatible||opts.quality==='smooth'?'default':'high-performance'});}
@@ -360,6 +362,16 @@
     globe.traverse(function(o){if(o.isMesh&&(o.userData.nodeId||o.userData.regionId))globePickTargets.push(o);});
     if(globeVillage)globePickTargets=Array.from(new Set(globePickTargets.concat(globeVillage.pickTargets)));
     freeze(globe);scene.matrixWorldAutoUpdate=false;
+    // Footprints of everything a walker must go around: buildings, town sites and
+    // frontier landmarks (the same circles ground scatter keeps clear).
+    var obstacleCache=null;
+    function mapObstacles(){
+      if(obstacleCache)return obstacleCache;var out=[];
+      if(enrichment&&enrichment.buildings)enrichment.buildings.forEach(function(b){var p=b.position||b;if(p&&typeof p.x==='number')out.push({x:p.x,z:p.z,radius:Math.max(1.2,b.radius||1.4),kind:'building'});});
+      if(mapVillage&&mapVillage.sites)mapVillage.sites.forEach(function(s){out.push({x:s.x,z:s.z,radius:Math.max(1.2,Math.max(s.width||3,s.depth||3)*.5),kind:'town'});});
+      if(mapFrontier&&mapFrontier.sites)mapFrontier.sites.forEach(function(s){out.push({x:s.x,z:s.z,radius:s.kind==='landmark'?2.2:1.4,kind:s.kind||'frontier'});});
+      obstacleCache=out;return out;
+    }
     function ensureMap(){
       if(map)return;
       if(!window.MarioConnectedMap)throw new Error('Connected map asset did not load.');
@@ -751,9 +763,13 @@
     function loop(timestamp){
       raf=0;if(disposed||contextLost||document.hidden||(!visible&&state.mode!=='descending'))return;
       var rotating=state.mode==='overview'&&state.autoRotate&&!state.dragging;
-      if(!dirty&&!moving()&&!rotating&&!animateWater&&!extraAnimation&&!environmentAnimating&&!handoffActive)return;
-      var active=state.dragging||moving()||rotating||handoffActive,frameLimit=active?maxFPS:environmentAnimating?Math.min(maxFPS,environmentFPS):extraAnimation?30:maxFPS;
+      if(!dirty&&!moving()&&!rotating&&!animateWater&&!extraAnimation&&!environmentAnimating&&!handoffActive&&!gameAnimating)return;
+      var active=state.dragging||moving()||rotating||handoffActive||gameAnimating,frameLimit=active?maxFPS:environmentAnimating?Math.min(maxFPS,environmentFPS):extraAnimation?30:maxFPS;
       if(timestamp-lastRenderAt<1000/frameLimit-1.0){schedule();return;}
+      if(gameHook&&isIsoMode()&&map&&!state.activePlace){
+        var gameDt=gameAnimating?Math.min(.25,Math.max(.001,(timestamp-lastRenderAt)/1000)):1/60;
+        gameAnimating=!!gameHook(gameDt,timestamp/1000);if(gameAnimating)dirty=true;
+      }else gameAnimating=false;
       var requested=dirty,cameraChanged=active||requested||frames===0||active!==resolutionMoving||bufferResizePending;
       var gap=timestamp-lastRenderAt,dt=Math.min(.1,Math.max(.001,gap/1000));lastRenderAt=timestamp;dirty=false;animationTime+=dt;warmFrames++;
       if(active!==resolutionMoving){resolutionMoving=active;resize();dirty=false;}
@@ -828,11 +844,21 @@
       if(cameraChanged)pins();var drawStart=performance.now();try{renderer.render(scene,activeCamera());}catch(error){if(opts.onFatalError){opts.onFatalError(error);return;}throw error;}drawMS=performance.now()-drawStart;frames++;
       if(renderer.shadowMap)renderer.shadowMap.needsUpdate=false;
       if(handoffPending){captureTransition(false);handoffPending=false;navigate(state.pending,true);if(disposed)return;invalidate();}
-      if(moving()||rotating||animateWater||extraAnimation||environmentAnimating||handoffActive)schedule();
+      if(moving()||rotating||animateWater||extraAnimation||environmentAnimating||handoffActive||gameAnimating)schedule();
       else if(resolutionMoving&&!state.dragging){resolutionMoving=false;resize();}
     }
     resize();canvas.style.touchAction=opts.zoom?'none':'pan-y';invalidate();
     return {
+      // Island Postie game API. getMapContext() builds the island on first use and
+      // returns what a player controller needs; follow() aims the island camera;
+      // requestFrame() wakes the on-demand scheduler after input.
+      getMapContext:function(){ensureMap();return{group:mapGroup,heightAt:map.heightAt,seaLevel:map.seaLevel||.48,bounds:map.bounds,routes:map.routes,regions:map.regions,
+        obstacles:mapObstacles(),places:enrichment?enrichment.places:[],npcs:enrichment&&enrichment.npcs?enrichment.npcs:[],
+        residents:function(){return (mapVillage&&mapVillage.residents||[]).concat(mapFrontier&&mapFrontier.residents||[]);}};},
+      follow:function(x,y,z,instant){if(!map||!isIsoMode())return;state.mapDesired.set(x,y,z);if(instant)state.mapTarget.copy(state.mapDesired);invalidate();},
+      setMapZoom:function(level){if(!map)return;state.mapTargetDistance=distanceForZoom(level,isoWholeDistance());invalidate();},
+      requestFrame:function(){invalidate();},
+      getIsoBasis:function(){var c=activeCamera(),f=new T.Vector3();c.getWorldDirection(f);f.y=0;if(f.lengthSq()<1e-6)f.set(0,0,-1);f.normalize();return{forward:{x:f.x,z:f.z},right:{x:-f.z,z:f.x}};},
       rotateIso:rotateIso,setIsoYaw:setIsoYaw,getIsoYaw:getIsoYaw,focusResident:focusResident,exitResidentFocus:exitResidentFocus,getResidentFocus:getResidentFocus,
       select:select,focus:select,openPlace:openPlace,closePlace:closePlace,getPlaces:function(){ensureMap();return enrichment?enrichment.places:[];},setQuality:setQuality,getQuality:function(){return quality;},enterRegion:enterRegion,enterMap:enterRegion,clear:clear,overview:overview,mapOverview:mapOverview,
       setAutoRotate:function(on){state.autoRotate=!!on;invalidate();},isAutoRotating:function(){return state.autoRotate;},

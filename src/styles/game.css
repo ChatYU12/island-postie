@@ -82,3 +82,36 @@ button{font:inherit;color:inherit}
   .island-tools{right:10px;bottom:68px}
 }
 @media (prefers-reduced-motion:reduce){.world-transition-frame{display:none}}
+
+/* ── Playing on the island ─────────────────────────────────────────── */
+.hud:not([data-player="on"]) #to-postie,.hud[data-mode="overview"] #to-postie{display:none}
+kbd{display:inline-block;min-width:1.6em;padding:1px 5px;border-radius:5px;background:#eef3f2;border:1px solid #d5dfdc;border-bottom-width:2px;
+  font:600 11px/1.4 var(--font);text-align:center;color:var(--ink)}
+.prompt{position:absolute;z-index:12;left:50%;bottom:96px;transform:translateX(-50%);margin:0;padding:8px 14px;border-radius:980px;
+  background:var(--paper);box-shadow:var(--shadow);font-size:13px;white-space:nowrap}
+.prompt[hidden]{display:none}
+.prompt-name{font-weight:650}
+.dialogue{position:absolute;z-index:25;left:50%;bottom:28px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));
+  padding:16px 18px 14px;border-radius:18px;background:var(--paper);box-shadow:0 14px 40px rgba(24,48,56,.22);border:2px solid #e8dcc6}
+.dialogue[hidden]{display:none}
+.dialogue header{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.dialogue-speaker{font-size:15px}
+.dialogue-title{font-size:11px;color:var(--muted)}
+.dialogue-text{margin:0 0 10px;font-size:15px;line-height:1.65}
+.dialogue button{float:right;border:0;border-radius:10px;padding:7px 12px;background:var(--accent);color:#fff;cursor:pointer;font-size:13px}
+.dialogue button kbd{background:rgba(255,255,255,.2);border-color:transparent;color:#fff}
+.keys-hint{position:absolute;z-index:10;left:50%;bottom:18px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:980px;
+  background:rgba(255,255,255,.82);font-size:12px;color:var(--muted);white-space:nowrap;display:none}
+.hud[data-player="on"][data-mode="island"]~.stage-wrap .keys-hint{display:block}
+.dialogue:not([hidden])~.keys-hint{display:none!important}
+.pad{display:none}
+@media (pointer:coarse){
+  .keys-hint{display:none!important}
+  .hud[data-player="on"][data-mode="island"]~.stage-wrap .pad{position:absolute;z-index:11;left:14px;bottom:70px;display:grid;
+    grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:4px;touch-action:none;user-select:none;-webkit-user-select:none}
+  .pad button{border:0;border-radius:14px;background:rgba(255,255,255,.88);box-shadow:var(--shadow);font-size:16px;color:var(--ink)}
+  .pad [data-dir="up"]{grid-area:1/2}.pad [data-dir="left"]{grid-area:2/1}.pad [data-act="talk"]{grid-area:2/2;background:var(--accent);color:#fff;font-weight:700}
+  .pad [data-dir="right"]{grid-area:2/3}.pad [data-dir="down"]{grid-area:3/2}
+  .prompt{bottom:250px}
+  .hud[data-player="on"][data-mode="island"]~.stage-wrap .island-plate{display:none}
+}

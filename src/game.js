@@ -6,6 +6,10 @@
    marketing site: capability panels, the contact form, business demos and the
    local diagnostics endpoint. */
 
+import { createController } from './game/controller.js';
+import { createDialogue } from './game/dialogue.js';
+import { greetingFor, nameFor } from './content/people.js';
+
 const REGION_NAMES = {
   collaboration: '城堡与村落', automation: '工坊与道路', connection: '港口与水路',
   snow: '雪山山麓', desert: '沙漠边境', lava: '熔岩山口', forest: '巨木蘑菇林',
@@ -27,6 +31,41 @@ export function startGame(root) {
   let planet = null;
   let recoveries = 0;
   let showWholeIslandOnLanding = false;
+  let player = null;
+  const dialogue = createDialogue(root);
+  const pad = root.querySelector('#pad');
+
+  function spawnPlayer() {
+    if (player || !planet) return;
+    player = createController({
+      planet,
+      onNearby: (target) => dialogue.showPrompt(target ? nameFor(target) : null),
+      onInteract: (target) => {
+        player.setFrozen(true);
+        dialogue.open(greetingFor(target), () => player && player.setFrozen(false));
+      }
+    });
+    hud.dataset.player = 'on';
+    say('你在小岛邮局门口。用 WASD 或方向键走路，靠近居民按 E 说话。');
+  }
+  function removePlayer() {
+    if (!player) return;
+    player.destroy(); player = null;
+    dialogue.close(); dialogue.showPrompt(null);
+    hud.dataset.player = 'off';
+  }
+
+  // Touch pad: the same four directions plus "talk", for screens without a keyboard.
+  pad.querySelectorAll('[data-dir]').forEach((button) => {
+    const dir = button.dataset.dir;
+    const down = (e) => { e.preventDefault(); button.setPointerCapture?.(e.pointerId); player && player.press(dir, true); };
+    const up = () => player && player.press(dir, false);
+    button.addEventListener('pointerdown', down);
+    button.addEventListener('pointerup', up);
+    button.addEventListener('pointercancel', up);
+    button.addEventListener('lostpointercapture', up);
+  });
+  pad.querySelector('[data-act="talk"]').addEventListener('click', () => player && player.interact());
   const environment = { timeOfDay: 14, weather: 'clear', animate: !reducedMotion, cycle: false };
 
   const say = (text) => { live.textContent = text; };
@@ -38,14 +77,15 @@ export function startGame(root) {
     button.type = 'button';
     button.dataset.region = id;
     button.textContent = name;
-    button.addEventListener('click', () => planet && planet.enterRegion(id));
+    button.addEventListener('click', () => { if (player) player.stopFollowing(); if (planet) planet.enterRegion(id); });
     regionBar.appendChild(button);
   }
   root.querySelector('#to-globe').addEventListener('click', () => planet && planet.overview());
+  root.querySelector('#to-postie').addEventListener('click', () => player && player.recenter());
   root.querySelector('#to-island').addEventListener('click', () => {
     if (!planet) return;
     if (planet.getMode() === 'overview') { showWholeIslandOnLanding = true; planet.enterRegion('collaboration'); }
-    else planet.mapOverview();
+    else { if (player) player.stopFollowing(); planet.mapOverview(); }
   });
   root.querySelector('#turn').addEventListener('click', () => {
     if (planet) { planet.rotateIso(1); say('已旋转大陆视角。'); }
@@ -64,7 +104,14 @@ export function startGame(root) {
     const onIsland = mode === 'map' || mode === 'focus';
     hud.dataset.mode = onIsland ? 'island' : mode;
     loading.hidden = mode !== 'descending';
-    if (onIsland && showWholeIslandOnLanding) {
+    if (onIsland && !player) {
+      const whole = showWholeIslandOnLanding;
+      showWholeIslandOnLanding = false;
+      requestAnimationFrame(() => {
+        spawnPlayer();
+        if (whole && planet) { player && player.stopFollowing(); planet.mapOverview(); }
+      });
+    } else if (onIsland && showWholeIslandOnLanding) {
       showWholeIslandOnLanding = false;
       requestAnimationFrame(() => planet && planet.mapOverview());
     }
@@ -86,6 +133,7 @@ export function startGame(root) {
   }
 
   function fail(error) {
+    removePlayer();
     if (planet) { planet.destroy(); planet = null; }
     environmentUI.setUnavailable(true);
     loading.hidden = true;
@@ -116,6 +164,7 @@ export function startGame(root) {
         maxPixelRatio: window.innerWidth <= 680 ? 1.25 : 1.6,
         minDistance: 2.8, maxDistance: portrait ? 7.6 : 6.3, zoom: true, pauseOffscreen: true,
         onSelect: () => {},
+        onMapFrame: (dt, time) => (player ? player.frame(dt, time) : false),
         onModeChange: modeChanged,
         onRegionChange: regionChanged,
         // Placeholder until errands exist: places and residents are where they will start.
@@ -126,6 +175,7 @@ export function startGame(root) {
         },
         onRecoverNeeded: (view) => {
           if (recoveries++ < 1) {
+            removePlayer();
             if (planet) { planet.destroy(); planet = null; }
             requestAnimationFrame(() => start(true, view));
           } else {
@@ -155,7 +205,7 @@ export function startGame(root) {
   failure.querySelector('button').addEventListener('click', () => { recoveries = 0; start(true); });
   document.addEventListener('keydown', (event) => {
     if (!planet) return;
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && !player) {
       if (planet.getMode() !== 'overview') planet.overview();
     } else if ((event.key === 'r' || event.key === 'R') && !event.target.closest('input, select, textarea')) {
       if (planet.getMode() === 'map' || planet.getMode() === 'focus') planet.rotateIso(1);

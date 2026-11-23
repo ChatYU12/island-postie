@@ -1,0 +1,81 @@
+/* Weather and time card, carried over from mario-world (environment.css). */
+/* Calm controls over a natural scene; surfaces stay opaque over animated water. */
+.world-transition-frame{position:absolute;inset:0;display:block;width:100%;height:100%;pointer-events:none;z-index:1;object-fit:fill}
+.world-transition-frame[hidden]{display:none}
+.world-environment-controls{position:absolute;z-index:10;right:20px;top:78px;width:190px;font-family:var(--font-body,-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif);font-size:12px;color:#254b45;background:#fff;border:1px solid #dde4e2;border-radius:14px;box-shadow:0 6px 20px rgb(24 51 58 / .07);pointer-events:auto}
+.world-environment-controls[hidden]{display:none}
+.world-environment-controls summary{display:flex;justify-content:space-between;align-items:center;gap:16px;min-height:44px;padding:10px 13px;cursor:pointer;list-style:none;font-weight:600}
+.world-environment-controls summary::-webkit-details-marker{display:none}
+.world-environment-controls summary small{font-size:11px;font-weight:400;color:#687d78}
+.world-environment-controls[open]{width:260px;max-width:calc(100% - 24px)}
+.world-environment-controls fieldset{border:0;border-top:1px solid #edf0ee;padding:15px;margin:0;min-width:0}
+.environment-time{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.environment-time output{font-variant-numeric:tabular-nums;font-size:13px;color:#415e60}
+.world-environment-controls input[type=range]{display:block;width:100%;min-height:36px;accent-color:#48857b;margin:0 0 10px;cursor:pointer}
+.environment-weather{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.environment-weather select{min-height:36px;min-width:120px;border:1px solid #d8e2de;border-radius:8px;padding:6px 9px;font:inherit;color:#254b45;background:#f8faf9}
+.environment-check{display:flex;align-items:center;gap:9px;min-height:38px;cursor:pointer}
+.environment-check input{width:17px;height:17px;accent-color:#48857b;flex-shrink:0}
+.environment-coast{width:100%;min-height:44px;margin-top:10px;border:1px solid #d2dfdb;border-radius:9px;background:#f0f5f2;color:#285c50;font:inherit;cursor:pointer}
+.environment-coast:hover{background:#e3eeea}
+.environment-coast:focus-visible{outline:2px solid #4d9187;outline-offset:3px}
+.environment-note{font-size:10px;line-height:1.65;color:#73847e;margin:10px 0 0}
+.world-environment-controls :is(summary,input,select):focus-visible{outline:2px solid #4d9187;outline-offset:3px}
+@media(max-width:999px){
+ .world-environment-controls{top:auto;bottom:76px;right:12px;width:178px}
+}
+@media(max-width:560px){
+ .world-environment-controls{right:10px;top:12px;bottom:auto;width:158px;font-size:11px;border-radius:12px}
+ .world-environment-controls summary{min-height:44px;padding:9px 11px;gap:8px}
+ .world-environment-controls[open]{width:246px;max-height:calc(100% - 90px);overflow:auto}
+ .world-environment-controls input[type=range],.environment-check,.environment-weather select{min-height:44px}
+ .environment-weather select{min-width:130px}
+}
+@media(prefers-reduced-motion:reduce){.world-transition-frame{display:none}.world-environment-controls{scroll-behavior:auto}}
+
+
+/* Island plate and half-turn button, carried over from mario-world (island-ui.css). */
+/* Isometric island plate: compass and map name, shown only on the mainland.
+   The globe view keeps its own hint, so this plate stays out of the way there. */
+.island-plate{position:absolute;right:18px;bottom:18px;display:none;align-items:center;gap:10px;
+  padding:8px 12px 8px 10px;border-radius:16px;background:rgba(255,255,255,.84);
+  box-shadow:0 10px 26px rgba(24,48,56,.14);color:#1f3a40;pointer-events:none;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html[data-world-mode="map"] .island-plate{display:flex}
+.island-compass{width:34px;height:34px;flex:none}
+.island-plate-copy{display:flex;flex-direction:column;line-height:1.3;white-space:nowrap}
+.island-plate-copy strong{font-size:13px;font-weight:650;letter-spacing:.02em}
+.island-plate-copy span{font-size:11px;color:#5a7076}
+@media (max-width:640px){
+  .island-plate{right:12px;bottom:76px;padding:6px 10px 6px 8px;border-radius:13px;gap:8px}
+  .island-compass{width:28px;height:28px}
+  .island-plate-copy strong{font-size:12px}
+  .island-plate-copy span{display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .island-plate{transition:opacity .3s ease}
+}
+
+/* The isometric plate is a marketing illustration look: a touch more
+   saturation and contrast on the map canvas only. The globe keeps its own
+   softer grade, and the filter is a single compositor pass. */
+html[data-world-mode="map"] #stage{filter:saturate(1.14) contrast(1.07)}
+
+/* The world-space pins are positioned from projected coordinates and may sit a few
+   pixels past the right edge on narrow screens, which used to widen the document and
+   add a horizontal scrollbar. Clipping the pin layer keeps the labels visible where
+   they belong and the page exactly one viewport wide. */
+.world-pins{overflow:clip}
+html{overflow-x:clip}
+
+/* The half-turn control only exists on the mainland: the globe keeps its own
+   toolbar, so the map tools are a separate, self-contained cluster. */
+.island-tools{position:absolute;right:18px;bottom:76px;display:none;gap:6px;z-index:2}
+html[data-world-mode="map"] .island-tools{display:flex}
+.island-tools button{appearance:none;border:0;cursor:pointer;padding:8px 14px;border-radius:980px;
+  font-size:12px;line-height:1;color:#1f3a40;background:rgba(255,255,255,.88);
+  box-shadow:0 8px 22px rgba(24,48,56,.14);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.island-tools button:hover{background:#fff}
+.island-tools button:focus-visible{outline:2px solid #2f6f8c;outline-offset:2px}
+@media (max-width:640px){.island-tools{right:12px;bottom:122px}.island-tools button{padding:7px 11px;font-size:11px}}
+

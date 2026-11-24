@@ -97,5 +97,5 @@ export const ERRANDS = [
   { id: 'heat-boots',      region: 'lava', giver: 'integration-garage', title: '一双隔热靴',
     steps: [{ type: 'fetch', item: '红岩样本', at: 'canyon-wall' }, { type: 'fetch', item: '羊毛', at: 'resident@snow' }, { type: 'deliver', to: 'integration-garage' }], reward: { unlock: 'lavaBoots' } },
   { id: 'last-letter',     region: 'lava', giver: 'automation-post', title: '寄往火山的信',
-    steps: [{ type: 'deliver', to: 'volcano' }], requires: { stamps: 30 }, note: '结局：信里写着什么，等故事线定了再填', reward: { ending: true } }
+    steps: [{ type: 'deliver', to: 'volcano' }], requires: { stamps: 30, unlock: 'lavaBoots' }, note: '结局：信里写着什么，等故事线定了再填', reward: { ending: true } }
 ];

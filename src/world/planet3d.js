@@ -854,7 +854,8 @@
       // requestFrame() wakes the on-demand scheduler after input.
       getMapContext:function(){ensureMap();return{group:mapGroup,heightAt:map.heightAt,seaLevel:map.seaLevel||.48,bounds:map.bounds,routes:map.routes,regions:map.regions,
         obstacles:mapObstacles(),places:enrichment?enrichment.places:[],npcs:enrichment&&enrichment.npcs?enrichment.npcs:[],
-        residents:function(){return (mapVillage&&mapVillage.residents||[]).concat(mapFrontier&&mapFrontier.residents||[]);}};},
+        residents:function(){return (mapVillage&&mapVillage.residents||[]).concat(mapFrontier&&mapFrontier.residents||[]);},
+        landmarks:townFacilities&&townFacilities.spots?townFacilities.spots:{}};},
       follow:function(x,y,z,instant){if(!map||!isIsoMode())return;state.mapDesired.set(x,y,z);if(instant)state.mapTarget.copy(state.mapDesired);invalidate();},
       setMapZoom:function(level){if(!map)return;state.mapTargetDistance=distanceForZoom(level,isoWholeDistance());invalidate();},
       requestFrame:function(){invalidate();},

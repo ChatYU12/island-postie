@@ -4,7 +4,7 @@
 
 **在线试玩**：https://chatyu12.github.io/island-postie/ （直接打开整座小岛：[#island](https://chatyu12.github.io/island-postie/#island)）
 
-> 现在是第 1 步：降落到小岛后可以操控邮差走路、过桥，靠近居民按 E 对话。委托系统还在做。玩法设计见 [docs/DESIGN.md](docs/DESIGN.md)。
+> 现在是第 2 步：降落到小岛后操控邮差走路、过桥，在邮局接信，把信和东西送到居民手里，攒邮票、解锁新地域。进度自动保存在浏览器里。玩法设计见 [docs/DESIGN.md](docs/DESIGN.md)。
 
 **操作**：WASD 或方向键走路 · Shift 快跑 · E 说话 · R 旋转视角 · 触屏用左下角方向键。
 
@@ -25,7 +25,7 @@ npm run preview   # 预览 dist/
 index.html            页面骨架：HUD、画布、加载与失败提示
 src/main.js           入口：按依赖顺序导入世界模块，然后启动游戏
 src/game.js           游戏外壳：启动星球、地域导航、天气、WebGL 恢复，降落后生成邮差
-src/game/             邮差模型、WASD 控制器、可行走判定、对话框
+src/game/             邮差模型、WASD 控制器、可行走判定、对话框、委托系统、标记与邮票、存档
 src/content/          居民与台词（people.js）、预设委托（errands.js）
 src/world/            从 mario-world 迁来的 3D 世界模块（各自注册一个 window.Mario* 对象）
   three-global.js     让旧模块从 npm 的 three r147 拿到全局 THREE

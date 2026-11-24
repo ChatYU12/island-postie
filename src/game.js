@@ -8,13 +8,13 @@
 
 import { createController } from './game/controller.js';
 import { createDialogue } from './game/dialogue.js';
+import { createTargets } from './game/world-targets.js';
+import { createErrands, REGION_GATES, REGION_NAMES } from './game/errands-runner.js';
+import { createMarkers } from './game/markers.js';
+import { createTracker } from './game/tracker.js';
+import { loadSave, writeSave, clearSave, totalStamps } from './game/save.js';
+import { UNLOCKS } from './content/errands.js';
 import { greetingFor, nameFor } from './content/people.js';
-
-const REGION_NAMES = {
-  collaboration: '城堡与村落', automation: '工坊与道路', connection: '港口与水路',
-  snow: '雪山山麓', desert: '沙漠边境', lava: '熔岩山口', forest: '巨木蘑菇林',
-  gardens: '花田风车谷', canyon: '红岩矿谷', lake: '高山湖营地'
-};
 
 export function startGame(root) {
   const canvas = root.querySelector('#stage');
@@ -35,25 +35,102 @@ export function startGame(root) {
   const dialogue = createDialogue(root);
   const pad = root.querySelector('#pad');
 
+  const tracker = createTracker(root);
+  let save = loadSave();
+  let errands = null, targets = null, markers = null;
+  let saveTimer = 0, regionTimer = 0, currentRegion = null;
+
+  function persist() { writeSave(save); }
+  function refreshTracker() {
+    if (!errands) return;
+    tracker.show(errands.describe(), errands.idleHint());
+    tracker.setStamps(totalStamps(save), (markers ? markers.total : 50) + 0);
+    regionBar.querySelectorAll('button').forEach((b) => {
+      const open = errands.regionOpen(b.dataset.region);
+      b.dataset.locked = open ? 'false' : 'true';
+      b.title = open ? '' : `需要「${UNLOCKS[REGION_GATES[b.dataset.region]].name}」`;
+    });
+    persist();
+    if (planet) planet.requestFrame();
+  }
+  function toast(message) { tracker.toast(message); say(message); }
+
   function spawnPlayer() {
     if (player || !planet) return;
+    const ctx = planet.getMapContext();
+    targets = createTargets(ctx);
+    errands = createErrands({
+      save, targets,
+      environment: () => planet && planet.getEnvironment(),
+      onChange: refreshTracker,
+      onToast: toast
+    });
     player = createController({
       planet,
+      start: save.position,
+      canRun: () => errands.has('bicycle'),
+      canEnter: (x, z, fromX, fromZ) => {
+        const region = targets.regionAt(x, z);
+        if (!region || errands.regionOpen(region.id)) return true;
+        // Already standing inside (e.g. an old save): let the walker out.
+        const from = targets.regionAt(fromX, fromZ);
+        if (from && from.id === region.id) return true;
+        return `需要「${UNLOCKS[REGION_GATES[region.id]].name}」才能去${REGION_NAMES[region.id]}`;
+      },
+      onBlocked: toast,
+      onFrame: ({ x, y, z, dt }) => {
+        errands.update({ x, z });
+        markers.update(dt, { x, y, z }, errands.pointer());
+        saveTimer += dt; regionTimer += dt;
+        if (saveTimer > 2) { saveTimer = 0; save.position = { x, z }; persist(); }
+        if (regionTimer > 0.4) {
+          regionTimer = 0;
+          const r = targets.regionAt(x, z);
+          if (r && r.id !== currentRegion) {
+            currentRegion = r.id;
+            regionLabel.textContent = REGION_NAMES[r.id] || r.name;
+            regionBar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.region === r.id)));
+          }
+        }
+        return false;
+      },
       onNearby: (target) => dialogue.showPrompt(target ? nameFor(target) : null),
       onInteract: (target) => {
         player.setFrozen(true);
-        dialogue.open(greetingFor(target), () => player && player.setFrozen(false));
+        const base = greetingFor(target);
+        const line = errands.talkTo(target, base.speaker) || base;
+        dialogue.open({ ...base, ...line, title: base.title }, () => player && player.setFrozen(false));
+      }
+    });
+    markers = createMarkers({
+      group: ctx.group, walkable: player.walkable, regions: targets.regions, foundIds: save.foundStamps,
+      onFound: (stamp) => {
+        save.foundStamps.push(stamp.id);
+        toast(`捡到一枚遗失的邮票！（${REGION_NAMES[stamp.region]}）`);
+        refreshTracker();
       }
     });
     hud.dataset.player = 'on';
-    say('你在小岛邮局门口。用 WASD 或方向键走路，靠近居民按 E 说话。');
+    // Handle for the browser console and automated play-tests.
+    window.__game = { player, errands, targets, markers, save: () => save };
+    errands.ensureStarted();
+    refreshTracker();
+    planet.requestFrame();
+    say(save.completed.length ? '欢迎回来，邮差。' : '你在小岛邮局门口。用 WASD 或方向键走路，靠近居民按 E 说话。');
   }
   function removePlayer() {
     if (!player) return;
     player.destroy(); player = null;
     dialogue.close(); dialogue.showPrompt(null);
+    tracker.hide();
     hud.dataset.player = 'off';
   }
+  root.querySelector('#restart').addEventListener('click', () => {
+    if (!confirm('重新开始会清除所有进度（委托、邮票、解锁），确定吗？')) return;
+    clearSave();
+    location.hash = 'island';
+    location.reload();
+  });
 
   // Touch pad: the same four directions plus "talk", for screens without a keyboard.
   pad.querySelectorAll('[data-dir]').forEach((button) => {
@@ -67,6 +144,7 @@ export function startGame(root) {
   });
   pad.querySelector('[data-act="talk"]').addEventListener('click', () => player && player.interact());
   const environment = { timeOfDay: 14, weather: 'clear', animate: !reducedMotion, cycle: false };
+  window.addEventListener('pagehide', () => { if (player) { const p = player.position; save.position = { x: p.x, z: p.z }; persist(); } });
 
   const say = (text) => { live.textContent = text; };
   // Portrait phones need the camera further back for the whole globe to fit.
@@ -94,7 +172,12 @@ export function startGame(root) {
   const environmentUI = window.MarioEnvironmentUI.create({
     parent: root.querySelector('#stage-wrap'),
     reducedMotion,
-    onChange: (patch) => { Object.assign(environment, patch); if (planet) planet.setEnvironment(patch); },
+    onChange: (patch) => {
+      Object.assign(environment, patch);
+      if (planet) planet.setEnvironment(patch);
+      // Waiting errands (time of day, weather) can finish without the postie moving.
+      if (errands && player) setTimeout(() => { const p = player.position; errands.update({ x: p.x, z: p.z }); }, 50);
+    },
     onCoast: () => planet && planet.openCoast(),
     onAnnounce: say
   });
@@ -125,7 +208,8 @@ export function startGame(root) {
   }
 
   function regionChanged(region) {
-    if (!region) return;
+    // Once the postie is on the island, "现在在" follows the postie, not the camera.
+    if (!region || player) return;
     const name = REGION_NAMES[region.id] || '整座小岛';
     regionLabel.textContent = name;
     regionBar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.region === region.id)));

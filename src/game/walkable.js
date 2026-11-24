@@ -63,25 +63,37 @@ export function createWalkable(ctx) {
     return false;
   }
 
-  /** Ground height for a walker at (x, z), or null when it cannot stand there. */
-  function standHeight(x, z) {
+  /**
+   * Where a walker stands at (x, z): { y, bridge } or null when it cannot.
+   * A road sample that sits well above the ground is a bridge deck: the walker
+   * stays on the deck over the river and over the sloping banks on either side
+   * (earlier the banks dropped the walker into the channel, so bridges could not
+   * be crossed).
+   */
+  function stand(x, z) {
     if (x < bounds.minX + 1 || x > bounds.maxX - 1 || z < bounds.minZ + 1 || z > bounds.maxZ - 1) return null;
     const h = heightAt(x, z);
-    if (h <= waterLine) {
-      const road = roadAt(x, z);
-      return road ? road.y : null;
-    }
-    if (blockedByObstacle(x, z)) return null;
-    return h;
+    const road = roadAt(x, z);
+    if (road && road.y > h + 0.2) return { y: road.y, bridge: true };
+    if (h <= waterLine) return road ? { y: road.y, bridge: true } : null;
+    if (!road && blockedByObstacle(x, z)) return null;
+    return { y: road ? Math.max(h, road.y - 0.075) : h, bridge: false };
   }
 
-  /** Can a walker step from height `fromY` to (x, z)? Returns the new height or null. */
-  function step(fromY, x, z, distance) {
-    const y = standHeight(x, z);
-    if (y === null) return null;
+  function standHeight(x, z) {
+    const s = stand(x, z);
+    return s ? s.y : null;
+  }
+
+  /** Can a walker step from `from` ({ y, bridge }) to (x, z)? Returns the new stance or null. */
+  function step(from, x, z, distance) {
+    const to = stand(x, z);
+    if (to === null) return null;
+    // Bridge rails: no stepping off the side of a deck onto the bank below.
+    if (from.bridge && !to.bridge && to.y < from.y - 0.45) return null;
     // Rises steeper than ~60° (cliffs, canyon walls) stop the walker; drops are fine.
-    if (y - fromY > Math.max(0.35, distance * 1.8)) return null;
-    return y;
+    if (to.y - from.y > Math.max(0.35, distance * 1.8)) return null;
+    return to;
   }
 
   /** Nearest standable point to (x, z), searching outward in rings. */
@@ -97,5 +109,5 @@ export function createWalkable(ctx) {
     return null;
   }
 
-  return { standHeight, step, nearestStandable, roadAt };
+  return { stand, standHeight, step, nearestStandable, roadAt };
 }

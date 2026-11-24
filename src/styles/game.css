@@ -115,3 +115,43 @@ kbd{display:inline-block;min-width:1.6em;padding:1px 5px;border-radius:5px;backg
   .prompt{bottom:250px}
   .hud[data-player="on"][data-mode="island"]~.stage-wrap .island-plate{display:none}
 }
+
+/* ── Errands ───────────────────────────────────────────────────────── */
+.hud:not([data-player="on"]) #restart{display:none}
+.hud-regions button[data-locked="true"]{opacity:.55}
+.hud-regions button[data-locked="true"]::before{content:"🔒";margin-right:4px;font-size:10px}
+.tracker{position:absolute;z-index:12;left:14px;top:178px;width:min(300px,calc(100% - 28px));padding:12px 14px;border-radius:16px;
+  background:var(--card);box-shadow:var(--shadow);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.tracker[hidden]{display:none}
+.tracker header{display:flex;align-items:baseline;gap:8px}
+.tracker-label{font-size:10px;padding:2px 6px;border-radius:6px;background:#fdf0d5;color:#8c5b20}
+.tracker-title{font-size:14px;flex:1}
+.tracker-step{font-size:11px;color:var(--muted)}
+.tracker-text{margin:8px 0 0;font-size:13px;line-height:1.55}
+.tracker-note{margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+.tracker[data-state="idle"] .tracker-label{background:#eef3f2;color:var(--muted)}
+.tracker footer{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.tracker footer strong{color:var(--ink)}
+.stamp-icon{width:12px;height:14px;border-radius:2px;background:#e0574f;box-shadow:0 0 0 2px #fff,0 0 0 3px #e4d6c4}
+.toasts{position:absolute;z-index:26;right:14px;top:78px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;width:min(420px,calc(100% - 28px))}
+.toast{margin:0;padding:9px 16px;border-radius:12px;background:#1f3a40;color:#fff;font-size:13px;line-height:1.5;box-shadow:var(--shadow);text-align:left;
+  animation:toast-in .25s ease-out;transition:opacity .5s,transform .5s}
+.toast.is-leaving{opacity:0;transform:translateY(-6px)}
+@keyframes toast-in{from{opacity:0;transform:translateY(-6px)}}
+.dialogue-text{white-space:pre-line}
+@media (max-width:640px){
+  .tracker{top:auto;bottom:12px;left:auto;right:10px;width:min(230px,calc(100% - 200px));padding:9px 11px}
+  .tracker-note{display:none}
+  .toasts{top:auto;bottom:250px;right:50%;transform:translateX(50%);align-items:center}
+}
+@media (max-width:640px) and (pointer:fine){.tracker{width:min(260px,calc(100% - 20px))}}
+
+/* Phones while playing: one scrolling row of actions under the title, and the
+   right column stacked tracker → weather → half-turn so nothing overlaps. */
+@media (max-width:640px){
+  .hud-actions{grid-column:1/-1;justify-content:flex-start;overflow-x:auto;scrollbar-width:none}
+  .hud button{white-space:nowrap;flex:none;padding:6px 10px;min-height:32px;font-size:12px}
+  .hud[data-player="on"] .world-environment-controls,
+  .hud[data-player="on"]~.stage-wrap .world-environment-controls{bottom:128px}
+  .hud[data-player="on"]~.stage-wrap .island-tools{bottom:182px}
+}

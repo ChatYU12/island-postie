@@ -17,6 +17,7 @@
       <button type="button" id="to-postie">回到邮差</button>
       <button type="button" id="to-island">整座小岛</button>
       <button type="button" id="to-globe">回到星球</button>
+      <button type="button" id="restart" title="清除存档，从头开始">重新开始</button>
     </div>
     <nav class="hud-regions" id="regions" aria-label="地域"></nav>
   </header>
@@ -26,6 +27,13 @@
     <div class="loading" id="loading" role="status">正在搭建星球…</div>
     <div class="island-plate" aria-hidden="true"><svg class="island-compass" viewBox="0 0 64 64" focusable="false"><circle cx="32" cy="32" r="27" fill="none" stroke="#cfdadd" stroke-width="2"/><path d="M32 10 L37.5 31 L32 27.5 L26.5 31 Z" fill="#c0544f"/><path d="M32 54 L26.5 33 L32 36.5 L37.5 33 Z" fill="#b9c7c9"/><text x="32" y="8.5" text-anchor="middle" font-size="8" font-weight="700" fill="#2b4a51">N</text></svg><span class="island-plate-copy"><strong>小岛邮差</strong><span>R 旋转视角 · 滚轮缩放</span></span></div>
     <div class="island-tools"><button type="button" id="turn" aria-label="旋转小岛视角 180 度，快捷键 R">旋转视角</button></div>
+    <section class="tracker" id="tracker" hidden aria-live="polite">
+      <header><span class="tracker-label">委托</span><strong class="tracker-title"></strong><span class="tracker-step"></span></header>
+      <p class="tracker-text"></p>
+      <p class="tracker-note" hidden></p>
+      <footer><span class="stamp-icon" aria-hidden="true"></span>邮票 <strong id="stamp-count">0/50</strong></footer>
+    </section>
+    <div class="toasts" id="toasts" role="status"></div>
     <p class="prompt" id="prompt" hidden><kbd>E</kbd> 和 <span class="prompt-name"></span> 说话</p>
     <section class="dialogue" id="dialogue" hidden aria-live="polite">
       <header><strong class="dialogue-speaker"></strong><span class="dialogue-title"></span></header>

@@ -514,7 +514,11 @@
       return true;
     }
 
-    return {group: group, stats: stats, update: update, dispose: dispose};
+    // Island Postie: where each working facility stands, for errands and markers.
+    var spots = {};
+    [['windmill', windmill], ['clock-tower', clock], ['blacksmith', forge], ['fountain', fountain], ['dock-crane', crane], ['water-wheel', wheelSpot]]
+      .forEach(function (pair) { if (pair[1]) spots[pair[0]] = {x: pair[1].x, y: pair[1].y, z: pair[1].z}; });
+    return {group: group, stats: stats, update: update, dispose: dispose, spots: spots};
   }
 
   root.MarioTownFacilities = {version: VERSION, build: build};

@@ -9,14 +9,22 @@ import { createPostie } from './postie.js';
 import { createWalkable } from './walkable.js';
 
 const WALK = 5.2;     // units per second
-const RUN = 8.5;      // with Shift
+const RUN = 8.5;      // with Shift, once the bicycle is unlocked
 const TURN = 12;      // facing easing rate
 const KEYS = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right'
 };
 
-export function createController({ planet, spawnPlaceId = 'automation-post', onNearby, onInteract }) {
+/**
+ * options:
+ *   canEnter(x, z)  → true, or a message string when that ground is locked
+ *   canRun()        → whether Shift speeds up (bicycle)
+ *   onFrame(state)  → called every moving frame with { x, y, z, dt }; return true to keep frames coming
+ *   onBlocked(msg)  → a locked area was bumped into
+ *   start           → saved { x, z } to resume from
+ */
+export function createController({ planet, spawnPlaceId = 'automation-post', onNearby, onInteract, canEnter, canRun, onFrame, onBlocked, start: saved }) {
   const ctx = planet.getMapContext();
   const walk = createWalkable(ctx);
   const postie = createPostie(1.05);
@@ -33,11 +41,14 @@ export function createController({ planet, spawnPlaceId = 'automation-post', onN
   // Start a few steps in front of the post office.
   const office = ctx.places.find((p) => p.id === spawnPlaceId) || ctx.places[0];
   const origin = office ? office.position : { x: 0, z: -10 };
-  const start = walk.nearestStandable(origin.x + 2.5, origin.z + 3) || walk.nearestStandable(0, -10, 30);
-  const pos = { x: start.x, y: walk.standHeight(start.x, start.z), z: start.z };
+  const start = (saved && walk.nearestStandable(saved.x, saved.z, 4))
+    || walk.nearestStandable(origin.x + 2.5, origin.z + 3) || walk.nearestStandable(0, -10, 30);
+  const stance0 = walk.stand(start.x, start.z);
+  const pos = { x: start.x, y: stance0.y, z: start.z, bridge: stance0.bridge };
+  let lastBlockedMessage = '';
   place();
   planet.follow(pos.x, pos.y + 0.9, pos.z, true);
-  planet.setMapZoom(6);
+  planet.setMapZoom(innerWidth < 700 ? 10 : 6);
 
   function place() {
     postie.root.position.set(pos.x, pos.y, pos.z);
@@ -96,7 +107,7 @@ export function createController({ planet, spawnPlaceId = 'automation-post', onN
       if (held.has('left')) ix -= 1;
     }
     const len = Math.hypot(ix, iz);
-    const target = len ? (run ? RUN : WALK) : 0;
+    const target = len ? (run && (!canRun || canRun()) ? RUN : WALK) : 0;
     speed += (target - speed) * (1 - Math.exp(-dt * 10));
 
     let moved = false;
@@ -105,9 +116,18 @@ export function createController({ planet, spawnPlaceId = 'automation-post', onN
       const mx = (basis.forward.x * iz + basis.right.x * ix) / len;
       const mz = (basis.forward.z * iz + basis.right.z * ix) / len;
       const tryMove = (dx, dz) => {
-        const y = walk.step(pos.y, pos.x + dx, pos.z + dz, Math.hypot(dx, dz));
-        if (y === null) return false;
-        pos.x += dx; pos.z += dz; pos.y = y;
+        const nx = pos.x + dx, nz = pos.z + dz;
+        const to = walk.step(pos, nx, nz, Math.hypot(dx, dz));
+        if (to === null) return false;
+        if (canEnter) {
+          const verdict = canEnter(nx, nz, pos.x, pos.z);
+          if (verdict !== true) {
+            if (verdict && verdict !== lastBlockedMessage && onBlocked) onBlocked(verdict);
+            lastBlockedMessage = verdict || '';
+            return false;
+          }
+        }
+        pos.x = nx; pos.z = nz; pos.y = to.y; pos.bridge = to.bridge;
         return true;
       };
       // Slow frames (dt up to 0.25 s) are split into short sub-steps so the walker
@@ -134,8 +154,10 @@ export function createController({ planet, spawnPlaceId = 'automation-post', onN
       nearby = near;
       if (onNearby) onNearby(nearby);
     }
+    if (moved) lastBlockedMessage = '';
+    const more = onFrame ? onFrame({ x: pos.x, y: pos.y, z: pos.z, dt, moved }) : false;
     // Keep drawing while walking and for a moment after, so the legs settle.
-    return len > 0 || speed > 0.05;
+    return len > 0 || speed > 0.05 || !!more;
   }
 
   // Show the prompt for whoever is already beside the spawn point.
@@ -150,9 +172,20 @@ export function createController({ planet, spawnPlaceId = 'automation-post', onN
     },
     interact() { const target = nearby || nearest(); if (!frozen && target && onInteract) onInteract(target); },
     get position() { return { ...pos }; },
+    walkable: walk,
+    context: ctx,
     setFrozen(value) { frozen = !!value; if (frozen) held.clear(); },
     stopFollowing() { follow = false; },
-    recenter() { follow = true; planet.follow(pos.x, pos.y + 0.9, pos.z); planet.setMapZoom(6); },
+    /** Move straight to (x, z) if someone can stand there (debug and future fast travel). */
+    teleport(x, z) {
+      const spot = walk.nearestStandable(x, z, 6);
+      if (!spot) return false;
+      const st = walk.stand(spot.x, spot.z);
+      Object.assign(pos, { x: spot.x, z: spot.z, y: st.y, bridge: st.bridge });
+      place(); follow = true; planet.follow(pos.x, pos.y + 0.9, pos.z, true); planet.requestFrame();
+      return true;
+    },
+    recenter() { follow = true; planet.follow(pos.x, pos.y + 0.9, pos.z); planet.setMapZoom(innerWidth < 700 ? 10 : 6); },
     destroy() {
       window.removeEventListener('keydown', keydown);
       window.removeEventListener('keyup', keyup);
